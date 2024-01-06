@@ -13,19 +13,19 @@ def create_indexpage(pages):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="shortcut icon" type="image/x-icon" href="assets/favicon.ico">
         <link rel="stylesheet" href="styles.css">
-        <title>The Matrix Dex</title>
+        <title>{dexname} Dex</title>
     </head>
     <body>
-        <br><h1>THE MATRIX DEX</h1><br>
+        <br><h1>{dexname.upper()} DEX</h1><br>
         {k}
         <br><br><br><br><br><br><br>
-        <h3><a href="index.html">THE MATRIX</a></h3>
+        <h3><a href="index.html">{dexname.upper()}</a></h3>
     </body>
     </html>
     """
     return template
 
-def create_webpage(slide_number, title, body):
+def create_webpage(title, body):
     k=''
     for i in body:
         k+='<p>'+i+'</p>'
@@ -35,7 +35,7 @@ def create_webpage(slide_number, title, body):
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="shortcut icon" type="image/x-icon" href="assets/favicon.ico">
         <link rel="stylesheet" href="styles.css">
-        <title>{title} - The Matrix Dex</title>
+        <title>{title} - {dexname} Dex</title>
     </head>
     <body>
     <br>
@@ -43,7 +43,7 @@ def create_webpage(slide_number, title, body):
     <br>
     {k}
     <br><br><br><br><br><br><br>
-    <h3><a href="index.html">THE MATRIX</a></h3>
+    <h3><a href="index.html">{dexname.upper()}</a></h3>
 </body>
 </html>"""
     return template
@@ -68,12 +68,12 @@ def json_to_webpages(json_file):
     for i in range(len(p)):
         t2="".join(x for x in p[i]['title'] if x.isalnum())
         t2=t2.lower()
-        page=create_webpage(i+1, p[i]['title'], p[i]['body'])
+        page=create_webpage(p[i]['title'], p[i]['body'])
         if len(p[i]['body'])>0:
             pages.append({'title':p[i]['title'], 'page':page, 'html_title': t2})
 
     pages = sorted(pages, key=lambda x: x['title'])
-    pages.append({'title':'The Matrix Dex', 'page':create_indexpage(pages) , 'html_title': 'index'})
+    pages.append({'title':f'{dexname} Dex', 'page':create_indexpage(pages) , 'html_title': 'index'})
     return pages
 
 def pdf_to_json(pdf_file):
@@ -99,18 +99,6 @@ def txt_to_json(txt_path):
         if len(i)!=0:
             p.append(i)
     return {'title':title, 'body': p}
-    
-def pdf_to_webpages(pdf_file):
-    pdf_reader = PyPDF2.PdfReader(pdf_file,site_folder_path)
-    titles=[]
-    for i in range(len(pdf_reader.pages)):
-        page = pdf_reader.pages[i]
-        text = page.extract_text()
-        lines = text.split("\n")
-        title = lines[0].strip()  # First line is considered as the title
-        body = lines[1:]  # Rest of the lines form the body
-        
-        create_webpage(i+1, p[i]['title'], p[i]['body'])
 
 def get_html_filenames(folder_path):
     filenames=os.listdir(folder_path)
@@ -172,8 +160,9 @@ def consolidate_json(json_data):
         p.append({'title':i, 'body':complete[i]})
     return p
 
-def parse_updates(old_path, update_path):
+def parse_updates(update_path):
     update_files = os.listdir(update_path)
+    update_files = [f for f in update_files if os.path.isfile(update_path+'/'+f)]
     p=[]
     for i in update_files:
         p.append({'format': str(i[i.find('.')+1:]), 'file_path': str(update_path + i)})
@@ -181,7 +170,9 @@ def parse_updates(old_path, update_path):
     updates_json = []
     for i in updates:
         if i['format']=='pdf':
-            updates_json.append(pdf_to_json(i['file_path']))
+            pdf_pages=pdf_to_json(i['file_path'])
+            for i in pdf_pages:
+                updates_json.append(i)
 
         elif i['format']=='txt':
             
@@ -193,45 +184,184 @@ def parse_updates(old_path, update_path):
             p=json.loads(z)
             for j in p:
                 updates_json.append(j)
-        
-    ## EDIT DUMMY JSON IN JSON EDITOR, SEND IT BACK FOR PARSING
-
-    # k=len(os.listdir(update_path))+1
-    # for i in range(len(data)):
-    #     with open(dummy_json_folder+str(k+i)+'.json', "w+") as file:
-    #         file.write(json.dumps(data[i]))
     
     updates_json=consolidate_json(updates_json)
+    return updates_json
 
+def create_first_json_file(path, dexname):
+    indexlink='''<a href="index.html">'''+dexname+'''</a>'''
+    z=[
+    {
+        "title": "Sample Page 1",
+        "body": [
+            "This is a sample page. The title of this page in the "+indexlink+" dex codebase is 'samplepage1.html'. Pages like <a href='samplepage2.html'>Sample Page 2</a> are currently hyperlinked using human intervention. Automatic search and hyperlink using simple document search will be embedded later.",
+            "Strings in the 'body' list of strings in the <a href='jsonintermediate.html'>JSON intermediate</a> document named 'data.json' encode different paragraphs of this page. The JSON intermediate is further explained in the green link above.",
+            "Link colors and limited stylistic features of this website may be edited using CSS in the 'styles.css' file in the codebase.",
+            "'Favicon.ico' file in the assets folder in this dex codebase is the icon for this website."
+        ]
+    },
+    {
+        "title": "Sample Page 2",
+        "body": [
+            "This is sample page 2 in the dex."
+        ]
+    },
+    {
+        "title": "JSON intermediate",
+        "body": [
+            "A JSON intermediate file named 'data.json' is created in the dex codebase. 'Data.json' is made from raw text, PDF and PPTX files you add to 'raw' folder in the dex codebase. Make document edits in this JSON intermediate. It is the raw data file used as input to generate HTML pages for each item in this list, along with an index page that links to all generated pages."
+        ]
+    },{
+        "title": "Contact",
+        "body": [
+            "Contact <a href='manonthemoon13131@gmail.com'>manonthemoon13131@gmail.com</a> to manage your dex website.",
+            "The Matrix codebase is listed on GitHub <a href='https://github.com/orgs/matrixdex/repositories'>here</a>."
+        ]
+    },{
+        "title": "Hosting",
+        "body": ["GitHub allows free hosting through GitHub pages. Simply create a repository in your account and add all files in the dex folder to that repository. Deploy a website using GitHub pages using 'index.html' in the 'dex' folder as entry point."]
+    }
+    ]
+    with open(path+'\\data.json','w+') as file:
+        file.write(json.dumps(z, indent=4))
+
+def update_json_data(old_path,updates):
     with open(old_path, 'r') as f:
         z=f.read()
     old=json.loads(z)
-    for i in updates_json:
+    for i in updates:
         old.append(i)
     old=consolidate_json(old)
-    return old
+    with open(old_path, 'w+') as f:
+        f.write(json.dumps(old, indent=4))
 
+def get_dexname_from_index_html(html):
+    dexname=None
+    link=False
+    links=[]
+    for i in range(len(html)):
+        if html[i]=='<':
+            if html[i+1]=='a':
+                link=True
+                links.append('')
+            if html[i+1]=='/' and html[i+2]=='a':
+                links[-1]+='</a>'
+                i=i+3
+                link=False
+        if link:
+            links[-1]+=html[i]
+    dexname = links[-1][links[-1].find('>'):links[-1].find('/a')][1:-1]
+
+    return dexname.title()
+
+def save_dexname_in_config(path, dexname):
+    config_json = {
+        "dexname": dexname,
+        "author": "Devpy Bot"
+    }
+    with open(path+'config.json', 'w+') as file:
+        file.write(json.dumps(config_json, indent=4))
 def upload(site_folder_path): # add github manager bot
     pass
 
 ## CONTROLS
 
 if __name__ == "__main__":
-    root='C:\\code\\matrix\\dex\\dex v2\\'
+    dexname = None
+    root=os.getcwd()+'\\'
+    p=['assets', 'backup', 'data.json', 'dev.py', 'dex', 'raw', 'readme.txt', 'styles.css', 'webdex']
+    tc=[]
+    for i in p:
+        if i not in os.listdir(root):
+            if i=='assets' or i=='backup' or i=='dex' or i=='raw' or i=='webdex':
+                os.mkdir(root+i)
+            if i=='assets':
+                pass    # assuming website icon exists, can embed into dev.py
+            if i=='backup':
+                if 'data.json' not in os.listdir(root):
+                    print("No dex found. Input name of dex: ", end='')
+                    dexname=input()
+                    dexname=dexname.title()
+                    create_first_json_file(root, dexname)
+                    create_first_json_file(root+i, dexname)
+                    save_dexname_in_config(root, dexname)
+                else:
+                    shutil.copy(root+'data.json',root+i)
+            if i=='data.json':
+                print("No dex found. Input name of dex: ", end='')
+                dexname=input()
+                dexname=dexname.title()
+                create_first_json_file(root, dexname)
+                save_dexname_in_config(root, dexname)
 
-    pdf_file_path = root+"dex.pdf"
-    site_folder_path = root+"ge4\\"
-    json_file = root+'raw\\data.json'
-    assets_path = root+'raw\\assets'
-    styles_path = root+'raw\\styles.css'
-    update_path = root + 'new\\'
-    dummy_json_folder = root + 'dummy_json\\'
+    if 'config.json' in os.listdir(root):
+        with open(root+'config.json','r') as file:
+            t=json.loads(file.read())
+        dexname=t['dexname']
 
-    # data = parse_updates(json_file, update_path) 
-    # # data = html_to_json(site_folder_path)   
-    # new_json_path = site_folder_path + 'raw.json'
-    # with open(new_json_path, "w+") as file:
-    #     file.write(json.dumps(data, indent=4))
+    elif 'index.html' in os.listdir(root+'dex\\'):
+        with open(root+'dex\\'+'index.html','r') as file:
+            dexname=get_dexname_from_index_html(file.read())
+        save_dexname_in_config(root, dexname)
+
+    else:
+        if 'data.json' in os.listdir(root):
+            print('dex root data.json found. dex name not found. input dex name: ', end='')
+            dexname = input()
+            dexname=dexname.title()
+        else:
+            dexname='Sample'
+        save_dexname_in_config(root, dexname)
+    
+        
+    
+
+    site_folder_path = root+"dex\\"
+    json_file = root+'data.json'
+    assets_path = root+'assets'
+    styles_path = root+'styles.css'
+    update_path = root + 'raw\\'
+
+    updates=None
+    if len(os.listdir(update_path))!=0:
+        if len(os.listdir(update_path))!=1 or os.listdir(update_path)[0]!='clear':
+            updates = parse_updates(update_path)
+        else:
+            updates=None
+        
+    if 'dummy.json' in os.listdir(root):
+        with open(root+'dummy.json','r') as f:
+            k=json.loads(f.read())
+        if updates == None:
+            print('appending dummy.json to data.json')
+            shutil.copy(root+'data.json',root+'backup\\')
+            print('data.json backed up in backup folder')
+            update_json_data(json_file,k)
+            print('data.json updated with dummy.json')
+            os.remove(root+'dummy.json')  
+
+        else:
+            update_json_data(root+'dummy.json',updates)
+            print('dummy.json updated with raw text from files in raw folder')
+            print("clearing files from raw folder and saving added files into '//raw//clear' folder")
+            if 'clear' not in os.listdir(update_path):
+                os.mkdir(update_path+'clear')
+            for i in os.listdir(update_path):
+                if i != 'clear':
+                    shutil.move(update_path+i,update_path+'clear')
+            print('edit dummy.json and run script again to add dummy.json to data.json')
+    else:
+        if updates != None:
+            with open(root+'dummy.json','w+') as f:
+                f.write(json.dumps(updates, indent=4))
+            print('dummy.json created from raw text files in raw folder')
+            print("clearing files from raw folder and saving added files into '//raw//clear' folder")
+            if 'clear' not in os.listdir(update_path):
+                os.mkdir(update_path+'clear')
+            for i in os.listdir(update_path):
+                if i != 'clear':
+                    shutil.move(update_path+i,update_path+'clear')
+            print('edit dummy.json and run script again to add dummy.json to data.json')
 
     
     if os.path.exists(json_file):
